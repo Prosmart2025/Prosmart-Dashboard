@@ -29,7 +29,7 @@
     .power-btn { width: 44px; height: 32px; border-radius: 16px; background: rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.4); color: #22d3ee; font-weight: bold; font-size: 12px; cursor: pointer; }
     .power-btn.off { background: #1e293b; border-color: #334155; color: #64748b; }
 
-    /* AC Card */
+    /* Controls */
     .temp-display { text-align: center; padding: 20px 0; }
     .temp-mode { font-size: 12px; color: #22d3ee; text-transform: uppercase; font-weight: 600; }
     .temp-val { font-size: 56px; font-weight: 800; color: #fff; margin: 4px 0; }
@@ -38,19 +38,13 @@
     .temp-adjust { width: 48px; height: 40px; border-radius: 10px; background: #1e293b; color: #fff; font-size: 20px; font-weight: bold; border: none; cursor: pointer; }
     .temp-adjust:hover { background: #334155; }
 
-    /* Light Card */
     .slider-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; color: #cbd5e1; }
     .range-input { width: 100%; accent-color: #fbbf24; cursor: pointer; }
-    .preset-colors { display: flex; gap: 8px; margin-top: 14px; align-items: center; justify-content: space-between; font-size: 12px; color: #94a3b8; }
-    .color-dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.2); cursor: pointer; }
 
-    /* Vacuum Card */
     .vac-status-box { background: #080d17; border: 1px solid #1e293b; border-radius: 12px; height: 90px; display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 12px; color: #34d399; margin: 12px 0; }
     .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .btn-cyan { background: #06b6d4; color: #020617; font-weight: 700; border: none; border-radius: 10px; padding: 10px; font-size: 12px; cursor: pointer; }
-    .btn-cyan:hover { background: #22d3ee; }
     .btn-dark { background: #1e293b; color: #e2e8f0; font-weight: 600; border: none; border-radius: 10px; padding: 10px; font-size: 12px; cursor: pointer; }
-    .btn-dark:hover { background: #334155; }
 
     /* Toast */
     #toast { position: fixed; top: 20px; right: 20px; background: #121c30; border: 1px solid #22d3ee; border-radius: 12px; padding: 12px 18px; color: #fff; font-size: 13px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); opacity: 0; transform: translateY(-50px); transition: all 0.3s ease; pointer-events: none; }
@@ -58,15 +52,20 @@
 
     /* Modal Overlay */
     .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-    .modal-box { background: #0e1626; border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 18px; width: 100%; max-width: 580px; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
-    .modal-head { background: #121c30; border-bottom: 1px solid #1e293b; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; }
-    .modal-head-title { font-size: 15px; font-weight: 700; color: #fff; }
+    .modal-box { background: #0e1626; border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 18px; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
+    .modal-head { background: #121c30; border-bottom: 1px solid #1e293b; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-head-title { font-size: 16px; font-weight: 700; color: #fff; }
     .close-x-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; font-size: 16px; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
     .close-x-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
-    .modal-body { padding: 22px; }
-    .qr-container { background: #080d17; border: 1px solid #1e293b; border-radius: 14px; padding: 16px; text-align: center; margin-bottom: 18px; }
-    .qr-image { width: 150px; height: 150px; background: #fff; border-radius: 10px; padding: 8px; margin: 0 auto 10px auto; display: block; }
-    .modal-action-btn { width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; margin-bottom: 10px; }
+    .modal-body { padding: 22px; font-size: 13px; }
+    
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; font-weight: 500; }
+    .form-input { width: 100%; background: #141e33; border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 13px; font-family: monospace; outline: none; }
+    .form-input:focus { border-color: #06b6d4; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .modal-action-btn { width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; margin-top: 8px; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -88,10 +87,10 @@
     </div>
     <div class="header-actions">
       <div class="status-pill">
-        <div class="status-dot"></div>
+        <div class="status-dot" id="headerDot"></div>
         <span id="connectionLabel">Tuya Ready</span>
       </div>
-      <button class="hub-btn" onclick="openModal()">Open Hub Modal</button>
+      <button class="hub-btn" onclick="openModal()">🔑 Tuya Cloud Credentials</button>
     </div>
   </header>
 
@@ -102,7 +101,7 @@
       <div class="card-head">
         <div>
           <h3>Air Conditioning</h3>
-          <p>Tuya Smart Inverter • Living Room</p>
+          <p>Living Room Inverter</p>
         </div>
         <button id="acPowerBtn" class="power-btn" onclick="toggleAC()">ON</button>
       </div>
@@ -122,7 +121,7 @@
       <div class="card-head">
         <div>
           <h3>Main Lighting</h3>
-          <p>Tuya Smart RGB Bulb</p>
+          <p>Tuya Smart Switch / Bulb</p>
         </div>
         <button id="lightPowerBtn" class="power-btn" onclick="toggleLight()">ON</button>
       </div>
@@ -132,14 +131,6 @@
           <span id="brightReadout" style="color: #fbbf24; font-weight: bold;">80%</span>
         </div>
         <input type="range" class="range-input" min="0" max="100" value="80" oninput="updateBrightness(this.value)">
-        <div class="preset-colors">
-          <span>Presets:</span>
-          <div style="display: flex; gap: 8px;">
-            <div class="color-dot" style="background: #fde68a;" onclick="setPreset('Warm Amber')"></div>
-            <div class="color-dot" style="background: #67e8f9;" onclick="setPreset('Cool Daylight')"></div>
-            <div class="color-dot" style="background: #a855f7;" onclick="setPreset('Evening Violet')"></div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -148,7 +139,7 @@
       <div class="card-head">
         <div>
           <h3>Robotic Vacuum</h3>
-          <p>Tuya Wi-Fi Sweeper</p>
+          <p>Tuya Smart Sweeper</p>
         </div>
         <span id="vacBadge" style="font-size: 11px; background: rgba(52,211,153,0.2); color: #34d399; padding: 4px 8px; border-radius: 20px;">Docked</span>
       </div>
@@ -156,107 +147,220 @@
         Battery: 100% • Docked on Charger
       </div>
       <div class="btn-row">
-        <button class="btn-cyan" onclick="startVacuum()">Clean Living Room</button>
-        <button class="btn-dark" onclick="dockVacuum()">Return Dock</button>
+        <button class="btn-cyan" onclick="sendDeviceCommand('vacuum', 'power_go', true)">Clean Now</button>
+        <button class="btn-dark" onclick="sendDeviceCommand('vacuum', 'switch_charge', true)">Go Dock</button>
       </div>
     </div>
   </main>
 
-  <!-- Modal Popup (Closeable) -->
+  <!-- Tuya Credentials Modal -->
   <div class="modal-backdrop" id="popupModal">
     <div class="modal-box">
       <div class="modal-head">
         <div>
-          <div class="modal-head-title">Tuya Cloud & Hub Setup</div>
-          <div style="font-size: 11px; color: #94a3b8;">Click ✕ or button to enter dashboard</div>
+          <div class="modal-head-title">Tuya Cloud API Credentials</div>
+          <div style="font-size: 11px; color: #94a3b8;">Enter your Tuya IoT Developer Console Keys below</div>
         </div>
-        <button class="close-x-btn" onclick="closeModal()" title="Close this popup">✕</button>
+        <button class="close-x-btn" onclick="closeModal()" title="Close">✕</button>
       </div>
       <div class="modal-body">
-        <div class="qr-container">
-          <img class="qr-image" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=prosmart-tuya-link-active" alt="QR Code">
-          <div style="font-size: 12px; color: #34d399;">● Ready to pair with Smart Life app</div>
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Data Center Region</label>
+            <select id="cfgRegion" class="form-input" style="font-family: inherit;">
+              <option value="eu-central-1">EU Central (Frankfurt) - eu-central-1</option>
+              <option value="us-east-1">US East (Virginia) - us-east-1</option>
+              <option value="us-west-2">US West (Oregon) - us-west-2</option>
+              <option value="cn-north-1">China Data Center</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Cloud Project ID</label>
+            <input type="text" id="cfgProjectId" class="form-input" placeholder="e.g. p1745274603937...">
+          </div>
         </div>
 
-        <button class="modal-action-btn" style="background: #06b6d4; color: #020617;" onclick="simulatePair()">
-          Simulate App Scan & Enter Dashboard
-        </button>
-        <button class="modal-action-btn" style="background: #1e293b; color: #f1f5f9;" onclick="closeModal()">
-          Close Modal & Test Buttons
-        </button>
+        <div class="form-group">
+          <label>Access ID / Client ID</label>
+          <input type="text" id="cfgClientId" class="form-input" placeholder="e.g. 7ry5jhn3ynw84aqpfrgd">
+        </div>
+
+        <div class="form-group">
+          <label>Access Secret / Secret Key</label>
+          <input type="password" id="cfgSecret" class="form-input" placeholder="Enter your Secret Key">
+        </div>
+
+        <div style="margin: 18px 0 10px; border-top: 1px solid #1e293b; padding-top: 14px;">
+          <strong style="color: #67e8f9; font-size: 12px; text-transform: uppercase;">Device IDs (From Tuya IoT Project Devices List)</strong>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>AC Device ID (Optional)</label>
+            <input type="text" id="devAcId" class="form-input" placeholder="bf281084918237...">
+          </div>
+          <div class="form-group">
+            <label>Light Device ID</label>
+            <input type="text" id="devLightId" class="form-input" placeholder="bf923018274012...">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Vacuum Device ID (Optional)</label>
+          <input type="text" id="devVacId" class="form-input" placeholder="bf810294819283...">
+        </div>
+
+        <div class="btn-row" style="margin-top: 16px;">
+          <button class="btn-dark" style="padding: 12px;" onclick="testApiHandshake()">🔍 Test Connection</button>
+          <button class="btn-cyan" style="padding: 12px;" onclick="saveCredentials()">💾 Save & Apply Keys</button>
+        </div>
+
       </div>
     </div>
   </div>
 
   <script>
+    // Load stored credentials on launch
+    function loadSavedKeys() {
+      if (localStorage.getItem('prosmart_tuya_clientId')) {
+        document.getElementById('cfgClientId').value = localStorage.getItem('prosmart_tuya_clientId') || '';
+        document.getElementById('cfgSecret').value = localStorage.getItem('prosmart_tuya_secret') || '';
+        document.getElementById('cfgProjectId').value = localStorage.getItem('prosmart_tuya_projectId') || '';
+        document.getElementById('cfgRegion').value = localStorage.getItem('prosmart_tuya_region') || 'eu-central-1';
+        document.getElementById('devAcId').value = localStorage.getItem('prosmart_dev_ac') || '';
+        document.getElementById('devLightId').value = localStorage.getItem('prosmart_dev_light') || '';
+        document.getElementById('devVacId').value = localStorage.getItem('prosmart_dev_vac') || '';
+        document.getElementById('connectionLabel').textContent = 'Keys Configured ✓';
+      }
+    }
+    loadSavedKeys();
+
     function notify(title, desc) {
       var t = document.getElementById('toast');
       document.getElementById('toastTitle').textContent = title;
       document.getElementById('toastDesc').textContent = desc;
       t.className = 'show';
-      setTimeout(function() { t.className = ''; }, 3000);
+      setTimeout(function() { t.className = ''; }, 3500);
     }
 
-    function closeModal() {
-      document.getElementById('popupModal').className = 'hidden';
-      notify('Dashboard Unlocked!', 'You can now click buttons, sliders & controls.');
-    }
+    function closeModal() { document.getElementById('popupModal').className = 'hidden'; }
+    function openModal() { document.getElementById('popupModal').className = 'modal-backdrop'; }
 
-    function openModal() {
-      document.getElementById('popupModal').className = 'modal-backdrop';
-    }
-
-    function simulatePair() {
-      document.getElementById('connectionLabel').textContent = 'Tuya Hub Paired ✓';
+    function saveCredentials() {
+      localStorage.setItem('prosmart_tuya_clientId', document.getElementById('cfgClientId').value.trim());
+      localStorage.setItem('prosmart_tuya_secret', document.getElementById('cfgSecret').value.trim());
+      localStorage.setItem('prosmart_tuya_projectId', document.getElementById('cfgProjectId').value.trim());
+      localStorage.setItem('prosmart_tuya_region', document.getElementById('cfgRegion').value);
+      localStorage.setItem('prosmart_dev_ac', document.getElementById('devAcId').value.trim());
+      localStorage.setItem('prosmart_dev_light', document.getElementById('devLightId').value.trim());
+      localStorage.setItem('prosmart_dev_vac', document.getElementById('devVacId').value.trim());
+      
+      notify('Keys Saved Successfully!', 'Your Tuya credentials are saved in your browser.');
+      document.getElementById('connectionLabel').textContent = 'Keys Saved ✓';
       closeModal();
-      notify('Tuya Connected 🎉', 'All devices synced with ProSmart.');
     }
 
-    // AC Logic
+    async function testApiHandshake() {
+      const clientId = document.getElementById('cfgClientId').value.trim();
+      const clientSecret = document.getElementById('cfgSecret').value.trim();
+      const region = document.getElementById('cfgRegion').value;
+
+      if (!clientId || !clientSecret) {
+        notify('Missing Info', 'Please enter your Client ID and Secret first.');
+        return;
+      }
+
+      notify('Connecting...', 'Testing HMAC-SHA256 handshake with Tuya...');
+
+      try {
+        const res = await fetch('/api/tuya', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, clientSecret, region, action: 'test' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          notify('Handshake Successful! 🎉', 'Tuya verified your credentials.');
+          document.getElementById('connectionLabel').textContent = 'Tuya Online';
+        } else {
+          notify('Auth Failed ⚠️', data.error || 'Check Client ID & Secret in Tuya console.');
+        }
+      } catch (err) {
+        notify('Vercel API Note', 'Ensure api/tuya.js exists in your repository.');
+      }
+    }
+
+    async function sendDeviceCommand(deviceType, commandCode, value) {
+      const clientId = localStorage.getItem('prosmart_tuya_clientId');
+      const clientSecret = localStorage.getItem('prosmart_tuya_secret');
+      const region = localStorage.getItem('prosmart_tuya_region') || 'eu-central-1';
+      
+      let deviceId = '';
+      if (deviceType === 'light') deviceId = localStorage.getItem('prosmart_dev_light');
+      if (deviceType === 'ac') deviceId = localStorage.getItem('prosmart_dev_ac');
+      if (deviceType === 'vacuum') deviceId = localStorage.getItem('prosmart_dev_vac');
+
+      if (!clientId || !clientSecret) {
+        notify('Configuration Needed', 'Click "Tuya Cloud Credentials" to enter your keys.');
+        openModal();
+        return;
+      }
+
+      if (!deviceId) {
+        notify('Device ID Missing', 'Enter the Device ID in the credentials popup.');
+        openModal();
+        return;
+      }
+
+      notify('Sending Command', `${commandCode} ➔ ${value}`);
+
+      try {
+        const res = await fetch('/api/tuya', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, clientSecret, region, deviceId, action: commandCode, value })
+        });
+        const result = await res.json();
+        if (result.success) {
+          notify('Command Executed! ✓', 'Physical device updated.');
+        } else {
+          notify('Device Response', result.msg || 'Command sent');
+        }
+      } catch (e) {
+        notify('Sent locally', 'Check Vercel deployment of api/tuya.js');
+      }
+    }
+
+    // UI Toggles
+    var lightState = true;
+    function toggleLight() {
+      lightState = !lightState;
+      var btn = document.getElementById('lightPowerBtn');
+      btn.textContent = lightState ? 'ON' : 'OFF';
+      btn.className = lightState ? 'power-btn' : 'power-btn off';
+      sendDeviceCommand('light', 'switch_1', lightState);
+    }
+
+    var acState = true;
+    function toggleAC() {
+      acState = !acState;
+      var btn = document.getElementById('acPowerBtn');
+      btn.textContent = acState ? 'ON' : 'OFF';
+      btn.className = acState ? 'power-btn' : 'power-btn off';
+      sendDeviceCommand('ac', 'switch', acState);
+    }
+
     var currentTemp = 22;
-    var acRunning = true;
     function changeTemp(delta) {
       currentTemp += delta;
       document.getElementById('acTemp').textContent = currentTemp + '°';
-      document.getElementById('acTarget').textContent = 'Target: ' + (currentTemp - 1) + '°C';
-    }
-    function toggleAC() {
-      acRunning = !acRunning;
-      var btn = document.getElementById('acPowerBtn');
-      btn.textContent = acRunning ? 'ON' : 'OFF';
-      btn.className = acRunning ? 'power-btn' : 'power-btn off';
-      document.getElementById('acMode').textContent = acRunning ? '• Cooling Active' : '• System Off';
-      notify('AC Updated', acRunning ? 'AC powered on' : 'AC turned off');
+      sendDeviceCommand('ac', 'temp_set', currentTemp);
     }
 
-    // Light Logic
-    var lightRunning = true;
-    function toggleLight() {
-      lightRunning = !lightRunning;
-      var btn = document.getElementById('lightPowerBtn');
-      btn.textContent = lightRunning ? 'ON' : 'OFF';
-      btn.className = lightRunning ? 'power-btn' : 'power-btn off';
-      notify('Lighting', lightRunning ? 'Lights on' : 'Lights off');
-    }
     function updateBrightness(val) {
       document.getElementById('brightReadout').textContent = val + '%';
-    }
-    function setPreset(name) {
-      notify('Color Changed', 'Preset selected: ' + name);
-    }
-
-    // Vacuum Logic
-    function startVacuum() {
-      document.getElementById('vacBadge').textContent = 'Cleaning';
-      document.getElementById('vacBadge').style.color = '#38bdf8';
-      document.getElementById('vacBox').textContent = 'LiDAR Active: Sweeping Living Room Area';
-      notify('Vacuum', 'Robot started sweeping cycle.');
-    }
-    function dockVacuum() {
-      document.getElementById('vacBadge').textContent = 'Docked';
-      document.getElementById('vacBadge').style.color = '#34d399';
-      document.getElementById('vacBox').textContent = 'Battery: 100% • Docked on Charger';
-      notify('Vacuum', 'Robot returning to dock.');
+      sendDeviceCommand('light', 'bright_value', parseInt(val) * 10);
     }
   </script>
 </body>
