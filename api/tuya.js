@@ -1,0 +1,505 @@
+const crypto = require('crypto');
+
+module.exports = async (req, res) => {
+  // Enable CORS so your frontend can call it
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  try {
+    const { 
+      region = 'eu-central-1', 
+      clientId, 
+      clientSecret, 
+      deviceId, 
+      action, 
+      value 
+    } = req.method === 'POST' ? req.body : req.query;
+
+    if (!clientId || !clientSecret) {
+      return res.status(400).json({ error: 'Missing Client ID or Secret' });
+    }
+
+    // Map region to Tuya API endpoints
+    const endpoints = {
+      'eu-central-1': 'https://openapi.tuyaeu.com',
+      'us-east-1': 'https://openapi.tuyaus.com',
+      'us-west-2': 'https://openapi.tuyaus.com',
+      'cn-north-1': 'https://openapi.tuyacn.com'
+    };
+    const baseUrl = endpoints[region] || 'https://openapi.tuyaeu.com';
+
+    // 1. Get Tuya Access Token via HMAC-SHA256 Signature
+    const timestamp = Date.now().toString();
+    const tokenUrl = '/v1.0/token?grant_type=1';
+    const stringToSign = [
+      'GET',
+      crypto.createHash('sha256').update('').digest('hex'),
+      '',
+      tokenUrl
+    ].join('\n');
+
+    const signPayload = clientId + timestamp + stringToSign;
+    const sign = crypto
+      .createHmac('sha256', clientSecret)
+      .update(signPayload)
+      .digest('hex')
+      .toUpperCase();
+
+    const tokenRes = await fetch(`${baseUrl}${tokenUrl}`, {
+      method: 'GET',
+      headers: {
+        'client_id': clientId,
+        'sign': sign,
+        't': timestamp,
+        'sign_method': 'HMAC-SHA256'
+      }
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenData.success) {
+      return res.status(401).json({ 
+        error: 'Tuya Auth Failed: ' + (tokenData.msg || 'Check Client ID & Secret'), 
+        details: tokenData 
+      });
+    }
+
+    const accessToken = tokenData.result.access_token;
+
+    // If query was just a test connection / handshake check
+    if (action === 'test' || !deviceId) {
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Successfully authenticated with Tuya Cloud!', 
+        region, 
+        expire_time: tokenData.result.expire_time 
+      });
+    }
+
+    // 2. Send Control Command to Physical Device
+    const commandPath = `/v1.0/devices/${deviceId}/commands`;
+    const commandsPayload = {
+      commands: [
+        {
+          code: action, // e.g., 'switch_1', 'switch_led', 'power'
+          value: value === 'true' ? true : value === 'false' ? false : value
+        }
+      ]
+    };
+
+    const bodyStr = JSON.stringify(commandsPayload);
+    const bodyHash = crypto.createHash('sha256').update(bodyStr).digest('hex');
+    const commandSignStr = ['POST', bodyHash, '', commandPath].join('\n');
+    const commandSignPayload = clientId + accessToken + timestamp + commandSignStr;
+    const commandSign = crypto
+      .createHmac('sha256', clientSecret)
+      .update(commandSignPayload)
+      .digest('hex')
+      .toUpperCase();
+
+    const deviceRes = await fetch(`${baseUrl}${commandPath}`, {
+      method: 'POST',
+      headers: {
+        'client_id': clientId,
+        'access_token': accessToken,
+        'sign': commandSign,
+        't': timestamp,
+        'sign_method': 'HMAC-SHA256',
+        'Content-Type': 'application/json'
+      },
+      body: bodyStr
+    });
+
+    const deviceData = await deviceRes.json();
+    return res.status(200).json(deviceData);
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+Click Commit changes.
+Step 2: Update index.html with Credentials Form & Live API Calls
+Now open index.html in your repo, click the Pencil icon, and replace all code with this updated dashboard.
+
+It includes:
+
+The persistent Tuya API Configuration Modal with fields for:
+Data Center Region (EU Central - Frankfurt, US East, etc.)
+Cloud Project ID (from your Tuya IoT console)
+Access ID / Client ID
+Access Secret / Secret Key
+Physical Device ID mapping for AC, Lights, and Vacuum
+Built-in "Test Connection" button that talks to /api/tuya to verify your keys immediately.
+Automatic browser storage (localStorage) so your credentials stay saved in your browser and you never have to re-enter them.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProSmart Home Dashboard</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0b111e; color: #f1f5f9; min-height: 100vh; padding-bottom: 40px; }
+    
+    /* Header */
+    header { background-color: #0e1626; border-bottom: 1px solid #1e293b; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 20; }
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+    .brand-title { font-size: 18px; font-weight: 800; letter-spacing: 1px; color: #fff; }
+    .brand-sub { font-size: 11px; color: #94a3b8; letter-spacing: 0.5px; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .status-pill { background: #141e33; border: 1px solid #1e293b; padding: 6px 12px; border-radius: 10px; font-size: 12px; color: #34d399; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #34d399; }
+    .status-dot.red { background: #f87171; }
+    .hub-btn { background: rgba(6, 182, 212, 0.15); border: 1px solid rgba(6, 182, 212, 0.4); color: #67e8f9; padding: 8px 14px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .hub-btn:hover { background: rgba(6, 182, 212, 0.25); }
+
+    /* Dashboard Grid */
+    main { max-width: 1200px; margin: 24px auto; padding: 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    .card { background-color: #121a2d; border: 1px solid #1e293b; border-radius: 16px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+    .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .card-head h3 { font-size: 15px; color: #fff; font-weight: 700; }
+    .card-head p { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+    
+    .power-btn { width: 44px; height: 32px; border-radius: 16px; background: rgba(6, 182, 212, 0.2); border: 1px solid rgba(6, 182, 212, 0.4); color: #22d3ee; font-weight: bold; font-size: 12px; cursor: pointer; }
+    .power-btn.off { background: #1e293b; border-color: #334155; color: #64748b; }
+
+    /* Controls */
+    .temp-display { text-align: center; padding: 20px 0; }
+    .temp-mode { font-size: 12px; color: #22d3ee; text-transform: uppercase; font-weight: 600; }
+    .temp-val { font-size: 56px; font-weight: 800; color: #fff; margin: 4px 0; }
+    .temp-target { font-size: 12px; color: #94a3b8; }
+    .temp-buttons { display: flex; justify-content: center; gap: 16px; margin-top: 8px; }
+    .temp-adjust { width: 48px; height: 40px; border-radius: 10px; background: #1e293b; color: #fff; font-size: 20px; font-weight: bold; border: none; cursor: pointer; }
+    .temp-adjust:hover { background: #334155; }
+
+    .slider-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; color: #cbd5e1; }
+    .range-input { width: 100%; accent-color: #fbbf24; cursor: pointer; }
+
+    .vac-status-box { background: #080d17; border: 1px solid #1e293b; border-radius: 12px; height: 90px; display: flex; align-items: center; justify-content: center; font-family: monospace; font-size: 12px; color: #34d399; margin: 12px 0; }
+    .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn-cyan { background: #06b6d4; color: #020617; font-weight: 700; border: none; border-radius: 10px; padding: 10px; font-size: 12px; cursor: pointer; }
+    .btn-dark { background: #1e293b; color: #e2e8f0; font-weight: 600; border: none; border-radius: 10px; padding: 10px; font-size: 12px; cursor: pointer; }
+
+    /* Toast */
+    #toast { position: fixed; top: 20px; right: 20px; background: #121c30; border: 1px solid #22d3ee; border-radius: 12px; padding: 12px 18px; color: #fff; font-size: 13px; z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5); opacity: 0; transform: translateY(-50px); transition: all 0.3s ease; pointer-events: none; }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* Modal Overlay */
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
+    .modal-box { background: #0e1626; border: 1px solid rgba(6, 182, 212, 0.4); border-radius: 18px; width: 100%; max-width: 620px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
+    .modal-head { background: #121c30; border-bottom: 1px solid #1e293b; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-head-title { font-size: 16px; font-weight: 700; color: #fff; }
+    .close-x-btn { background: #1e293b; border: 1px solid #334155; color: #94a3b8; font-size: 16px; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+    .close-x-btn:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+    .modal-body { padding: 22px; font-size: 13px; }
+    
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; font-weight: 500; }
+    .form-input { width: 100%; background: #141e33; border: 1px solid #334155; border-radius: 10px; padding: 10px 12px; color: #fff; font-size: 13px; font-family: monospace; outline: none; }
+    .form-input:focus { border-color: #06b6d4; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .modal-action-btn { width: 100%; padding: 12px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; margin-top: 8px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Toast -->
+  <div id="toast">
+    <strong id="toastTitle">Notification</strong>
+    <p id="toastDesc" style="font-size: 11px; color: #94a3b8; margin-top: 2px;">Update complete</p>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="logo-area">
+      <div>
+        <div class="brand-title">PROSMART</div>
+        <div class="brand-sub">SMART LIVING, SIMPLIFIED (NO HOME ASSISTANT REQUIRED)</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="status-pill">
+        <div class="status-dot" id="headerDot"></div>
+        <span id="connectionLabel">Tuya Ready</span>
+      </div>
+      <button class="hub-btn" onclick="openModal()">🔑 Tuya Cloud Credentials</button>
+    </div>
+  </header>
+
+  <!-- Dashboard Grid -->
+  <main>
+    <!-- AC Card -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Air Conditioning</h3>
+          <p>Living Room Inverter</p>
+        </div>
+        <button id="acPowerBtn" class="power-btn" onclick="toggleAC()">ON</button>
+      </div>
+      <div class="temp-display">
+        <div class="temp-mode" id="acMode">• Cooling Active</div>
+        <div class="temp-val" id="acTemp">22°</div>
+        <div class="temp-target" id="acTarget">Target: 21°C</div>
+      </div>
+      <div class="temp-buttons">
+        <button class="temp-adjust" onclick="changeTemp(-1)">−</button>
+        <button class="temp-adjust" onclick="changeTemp(1)">+</button>
+      </div>
+    </div>
+
+    <!-- Lighting Card -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Main Lighting</h3>
+          <p>Tuya Smart Switch / Bulb</p>
+        </div>
+        <button id="lightPowerBtn" class="power-btn" onclick="toggleLight()">ON</button>
+      </div>
+      <div style="padding: 16px 0;">
+        <div class="slider-row">
+          <span>Brightness</span>
+          <span id="brightReadout" style="color: #fbbf24; font-weight: bold;">80%</span>
+        </div>
+        <input type="range" class="range-input" min="0" max="100" value="80" oninput="updateBrightness(this.value)">
+      </div>
+    </div>
+
+    <!-- Vacuum Card -->
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Robotic Vacuum</h3>
+          <p>Tuya Smart Sweeper</p>
+        </div>
+        <span id="vacBadge" style="font-size: 11px; background: rgba(52,211,153,0.2); color: #34d399; padding: 4px 8px; border-radius: 20px;">Docked</span>
+      </div>
+      <div class="vac-status-box" id="vacBox">
+        Battery: 100% • Docked on Charger
+      </div>
+      <div class="btn-row">
+        <button class="btn-cyan" onclick="sendDeviceCommand('vacuum', 'power_go', true)">Clean Now</button>
+        <button class="btn-dark" onclick="sendDeviceCommand('vacuum', 'switch_charge', true)">Go Dock</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Tuya Credentials Modal -->
+  <div class="modal-backdrop" id="popupModal">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-title">Tuya Cloud API Credentials</div>
+          <div style="font-size: 11px; color: #94a3b8;">Enter your Tuya IoT Developer Console Keys below</div>
+        </div>
+        <button class="close-x-btn" onclick="closeModal()" title="Close">✕</button>
+      </div>
+      <div class="modal-body">
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Data Center Region</label>
+            <select id="cfgRegion" class="form-input" style="font-family: inherit;">
+              <option value="eu-central-1">EU Central (Frankfurt) - eu-central-1</option>
+              <option value="us-east-1">US East (Virginia) - us-east-1</option>
+              <option value="us-west-2">US West (Oregon) - us-west-2</option>
+              <option value="cn-north-1">China Data Center</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Cloud Project ID</label>
+            <input type="text" id="cfgProjectId" class="form-input" placeholder="e.g. p1745274603937...">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Access ID / Client ID</label>
+          <input type="text" id="cfgClientId" class="form-input" placeholder="e.g. 7ry5jhn3ynw84aqpfrgd">
+        </div>
+
+        <div class="form-group">
+          <label>Access Secret / Secret Key</label>
+          <input type="password" id="cfgSecret" class="form-input" placeholder="Enter your Secret Key">
+        </div>
+
+        <div style="margin: 18px 0 10px; border-top: 1px solid #1e293b; padding-top: 14px;">
+          <strong style="color: #67e8f9; font-size: 12px; text-transform: uppercase;">Device IDs (From Tuya IoT Project Devices List)</strong>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>AC Device ID (Optional)</label>
+            <input type="text" id="devAcId" class="form-input" placeholder="bf281084918237...">
+          </div>
+          <div class="form-group">
+            <label>Light Device ID</label>
+            <input type="text" id="devLightId" class="form-input" placeholder="bf923018274012...">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Vacuum Device ID (Optional)</label>
+          <input type="text" id="devVacId" class="form-input" placeholder="bf810294819283...">
+        </div>
+
+        <div class="btn-row" style="margin-top: 16px;">
+          <button class="btn-dark" style="padding: 12px;" onclick="testApiHandshake()">🔍 Test Connection</button>
+          <button class="btn-cyan" style="padding: 12px;" onclick="saveCredentials()">💾 Save & Apply Keys</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load stored credentials on launch
+    function loadSavedKeys() {
+      if (localStorage.getItem('prosmart_tuya_clientId')) {
+        document.getElementById('cfgClientId').value = localStorage.getItem('prosmart_tuya_clientId') || '';
+        document.getElementById('cfgSecret').value = localStorage.getItem('prosmart_tuya_secret') || '';
+        document.getElementById('cfgProjectId').value = localStorage.getItem('prosmart_tuya_projectId') || '';
+        document.getElementById('cfgRegion').value = localStorage.getItem('prosmart_tuya_region') || 'eu-central-1';
+        document.getElementById('devAcId').value = localStorage.getItem('prosmart_dev_ac') || '';
+        document.getElementById('devLightId').value = localStorage.getItem('prosmart_dev_light') || '';
+        document.getElementById('devVacId').value = localStorage.getItem('prosmart_dev_vac') || '';
+        document.getElementById('connectionLabel').textContent = 'Keys Configured ✓';
+      }
+    }
+    loadSavedKeys();
+
+    function notify(title, desc) {
+      var t = document.getElementById('toast');
+      document.getElementById('toastTitle').textContent = title;
+      document.getElementById('toastDesc').textContent = desc;
+      t.className = 'show';
+      setTimeout(function() { t.className = ''; }, 3500);
+    }
+
+    function closeModal() { document.getElementById('popupModal').className = 'hidden'; }
+    function openModal() { document.getElementById('popupModal').className = 'modal-backdrop'; }
+
+    function saveCredentials() {
+      localStorage.setItem('prosmart_tuya_clientId', document.getElementById('cfgClientId').value.trim());
+      localStorage.setItem('prosmart_tuya_secret', document.getElementById('cfgSecret').value.trim());
+      localStorage.setItem('prosmart_tuya_projectId', document.getElementById('cfgProjectId').value.trim());
+      localStorage.setItem('prosmart_tuya_region', document.getElementById('cfgRegion').value);
+      localStorage.setItem('prosmart_dev_ac', document.getElementById('devAcId').value.trim());
+      localStorage.setItem('prosmart_dev_light', document.getElementById('devLightId').value.trim());
+      localStorage.setItem('prosmart_dev_vac', document.getElementById('devVacId').value.trim());
+      
+      notify('Keys Saved Successfully!', 'Your Tuya credentials are saved in your browser.');
+      document.getElementById('connectionLabel').textContent = 'Keys Saved ✓';
+      closeModal();
+    }
+
+    async function testApiHandshake() {
+      const clientId = document.getElementById('cfgClientId').value.trim();
+      const clientSecret = document.getElementById('cfgSecret').value.trim();
+      const region = document.getElementById('cfgRegion').value;
+
+      if (!clientId || !clientSecret) {
+        notify('Missing Info', 'Please enter your Client ID and Secret first.');
+        return;
+      }
+
+      notify('Connecting...', 'Testing HMAC-SHA256 handshake with Tuya...');
+
+      try {
+        const res = await fetch('/api/tuya', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, clientSecret, region, action: 'test' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          notify('Handshake Successful! 🎉', 'Tuya verified your credentials.');
+          document.getElementById('connectionLabel').textContent = 'Tuya Online';
+        } else {
+          notify('Auth Failed ⚠️', data.error || 'Check Client ID & Secret in Tuya console.');
+        }
+      } catch (err) {
+        notify('Vercel API Note', 'Save api/tuya.js to your repo to enable cloud calls.');
+      }
+    }
+
+    async function sendDeviceCommand(deviceType, commandCode, value) {
+      const clientId = localStorage.getItem('prosmart_tuya_clientId');
+      const clientSecret = localStorage.getItem('prosmart_tuya_secret');
+      const region = localStorage.getItem('prosmart_tuya_region') || 'eu-central-1';
+      
+      let deviceId = '';
+      if (deviceType === 'light') deviceId = localStorage.getItem('prosmart_dev_light');
+      if (deviceType === 'ac') deviceId = localStorage.getItem('prosmart_dev_ac');
+      if (deviceType === 'vacuum') deviceId = localStorage.getItem('prosmart_dev_vac');
+
+      if (!clientId || !clientSecret) {
+        notify('Configuration Needed', 'Click "Tuya Cloud Credentials" to enter your keys.');
+        openModal();
+        return;
+      }
+
+      if (!deviceId) {
+        notify('Device ID Missing', 'Enter the Device ID in the credentials popup.');
+        openModal();
+        return;
+      }
+
+      notify('Sending Command', `${commandCode} ➔ ${value}`);
+
+      try {
+        const res = await fetch('/api/tuya', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clientId, clientSecret, region, deviceId, action: commandCode, value })
+        });
+        const result = await res.json();
+        if (result.success) {
+          notify('Command Executed! ✓', 'Physical device updated.');
+        } else {
+          notify('Device Response', result.msg || 'Command sent');
+        }
+      } catch (e) {
+        notify('Sent locally', 'Check Vercel deployment of api/tuya.js');
+      }
+    }
+
+    // UI Toggles
+    var lightState = true;
+    function toggleLight() {
+      lightState = !lightState;
+      var btn = document.getElementById('lightPowerBtn');
+      btn.textContent = lightState ? 'ON' : 'OFF';
+      btn.className = lightState ? 'power-btn' : 'power-btn off';
+      sendDeviceCommand('light', 'switch_1', lightState);
+    }
+
+    var acState = true;
+    function toggleAC() {
+      acState = !acState;
+      var btn = document.getElementById('acPowerBtn');
+      btn.textContent = acState ? 'ON' : 'OFF';
+      btn.className = acState ? 'power-btn' : 'power-btn off';
+      sendDeviceCommand('ac', 'switch', acState);
+    }
+
+    var currentTemp = 22;
+    function changeTemp(delta) {
+      currentTemp += delta;
+      document.getElementById('acTemp').textContent = currentTemp + '°';
+      sendDeviceCommand('ac', 'temp_set', currentTemp);
+    }
+
+    function updateBrightness(val) {
+      document.getElementById('brightReadout').textContent = val + '%';
+      sendDeviceCommand('light', 'bright_value', parseInt(val) * 10);
+    }
+  </script>
+</body>
+</html>
