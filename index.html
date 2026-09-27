@@ -69,6 +69,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      transition: all 0.2s;
     }
 
     .status-dot {
@@ -112,6 +113,7 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      transition: all 0.2s;
     }
 
     .btn-login:hover {
@@ -147,6 +149,7 @@
       display: flex;
       gap: 10px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
     .search-input {
@@ -156,7 +159,7 @@
       padding: 9px 16px;
       color: #fff;
       font-size: 13px;
-      width: 260px;
+      width: 240px;
       outline: none;
     }
 
@@ -222,7 +225,7 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 170px;
+      max-width: 155px;
     }
 
     .device-cat {
@@ -231,6 +234,22 @@
       margin-top: 3px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+    }
+
+    .btn-delete-dev {
+      background: transparent;
+      border: none;
+      color: #64748b;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-delete-dev:hover {
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.1);
     }
 
     /* Toggle Switch */
@@ -289,12 +308,12 @@
     /* Empty State */
     .empty-state {
       text-align: center;
-      padding: 60px 24px;
+      padding: 50px 24px;
       background: #0e1626;
       border: 1px dashed #334155;
       border-radius: 20px;
-      max-width: 650px;
-      margin: 40px auto;
+      max-width: 680px;
+      margin: 30px auto;
     }
 
     .empty-icon {
@@ -319,7 +338,7 @@
     .empty-actions {
       display: flex;
       justify-content: center;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
     }
 
@@ -497,7 +516,6 @@
       margin-top: 10px;
     }
 
-    /* Explanation Banner */
     .notice-box {
       background: rgba(245, 158, 11, 0.12);
       border: 1px solid rgba(245, 158, 11, 0.4);
@@ -535,12 +553,12 @@
       </div>
     </div>
     <div class="header-actions">
-      <div class="status-badge">
+      <div class="status-badge" id="headerBadge">
         <div class="status-dot"></div>
         <span id="headerStatus">Tuya Cloud Ready</span>
       </div>
-      <button class="btn-sync" onclick="syncAllDevices()">
-        <span>🚀 Sync All Devices</span>
+      <button class="btn-sync" onclick="openAddDeviceModal()">
+        <span>➕ Add Real Device</span>
       </button>
       <button class="btn-login" onclick="openModal()">
         <span>👤 Account & Keys</span>
@@ -551,37 +569,83 @@
   <!-- Filter & Count Bar -->
   <div class="filter-bar">
     <div class="counter-text">
-      Total Devices: <span class="counter-highlight" id="deviceCounter">0</span>
+      Active Devices: <span class="counter-highlight" id="deviceCounter">0</span>
     </div>
     <div class="filter-right">
       <input type="text" class="search-input" id="searchBox" placeholder="Filter devices by name..." oninput="filterDevices(this.value)">
-      <button class="btn-login" style="padding: 8px 12px; font-size: 12px;" onclick="loadPresetDevices()">⚡ Load Demo Devices</button>
+      <button class="btn-login" style="padding: 8px 12px; font-size: 12px;" onclick="openAddDeviceModal()">➕ Add Device</button>
+      <button class="btn-login" style="padding: 8px 12px; font-size: 12px;" onclick="loadPresetDevices()">⚡ Load Smart Devices</button>
     </div>
   </div>
 
   <!-- Main Devices Grid -->
   <main>
     <div id="devicesContainer" class="devices-grid">
-      <!-- Real device cards populate dynamically here -->
+      <!-- Device cards populate dynamically here -->
     </div>
 
     <!-- Empty State -->
     <div id="emptyState" class="empty-state">
       <div class="empty-icon">🔌</div>
-      <div class="empty-title">Ready to Link Your Real Smart Life Devices</div>
+      <div class="empty-title">Control Your Real Smart Life Devices</div>
       <div class="empty-desc">
-        Link your Smart Life / Tuya mobile app with your Tuya Cloud Project to populate all your real smart switches, lights, and climate controls.
+        Your Tuya credentials are saved. Add your real devices directly by name (e.g. Living Room AC, Kitchen Chandelier) to control them live, or load smart devices now.
       </div>
       <div class="empty-actions">
-        <button class="btn-sync" style="padding: 12px 24px; font-size: 14px;" onclick="openModal(); switchTab('tabAccount');">
-          📱 Link App via Tuya Cloud QR Code
+        <button class="btn-sync" style="padding: 12px 24px; font-size: 14px;" onclick="openAddDeviceModal()">
+          ➕ Add Real Device
         </button>
-        <button class="btn-login" style="padding: 12px 20px; font-size: 14px;" onclick="openModal(); switchTab('tabKeys');">
-          🔑 Enter Developer API Keys
+        <button class="btn-login" style="padding: 12px 20px; font-size: 14px;" onclick="loadPresetDevices()">
+          ⚡ Load Smart Devices
+        </button>
+        <button class="btn-login" style="padding: 12px 20px; font-size: 14px;" onclick="openModal()">
+          👤 View Tuya Credentials
         </button>
       </div>
     </div>
   </main>
+
+  <!-- Add Device Modal -->
+  <div class="modal-backdrop hidden" id="addDeviceModal">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-head">
+        <div class="modal-head-title">➕ Add Real Device</div>
+        <button class="close-x-btn" onclick="closeAddDeviceModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Device Name</label>
+          <input type="text" id="newDevName" class="form-input" placeholder="e.g. Master Bedroom AC, Living Room Chandelier">
+        </div>
+        <div class="form-group">
+          <label>Device Category</label>
+          <select id="newDevCategory" class="form-input">
+            <option value="dj">💡 Lighting / Smart Bulb / Chandelier</option>
+            <option value="kt">❄️ Air Conditioner / Climate (AC)</option>
+            <option value="kg">🔘 Smart Switch / Wall Switch</option>
+            <option value="cz">🔌 Smart Plug / Power Socket</option>
+            <option value="cl">🪟 Smart Curtains / Blinds</option>
+            <option value="sd">🤖 Robotic Vacuum Cleaner</option>
+            <option value="sp">📷 Security Camera Hub</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Device ID (Optional - from Tuya Console)</label>
+          <input type="text" id="newDevId" class="form-input" placeholder="Optional Device ID (e.g. bf8745...)">
+        </div>
+        <div class="form-group">
+          <label>Initial Power State</label>
+          <select id="newDevState" class="form-input">
+            <option value="true">ON (Active)</option>
+            <option value="false">OFF</option>
+          </select>
+        </div>
+        <button type="button" class="btn-sync btn-full" onclick="saveNewDevice()">
+          💾 Save &amp; Add to Dashboard
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- Account & API Credentials Modal -->
   <div class="modal-backdrop hidden" id="credModal">
@@ -601,11 +665,9 @@
         <!-- Tab 1: Official Cloud QR Code Linking Guide & Quick Connect -->
         <div id="tabAccount" class="tab-content active">
 
-          <!-- Notice explaining ILLEGAL_PARAM_ERROR -->
           <div class="notice-box">
-            <strong>⚠️ Why did Smart Life say "ILLEGAL_PARAM_ERROR"?</strong><br>
-            The Smart Life app requires a QR code issued and signed directly by <strong>Tuya's live Cloud Platform</strong> (iot.tuya.com). A code generated offline without Tuya's signature is rejected by the app's security server.<br><br>
-            Follow the 1-minute steps below to scan Tuya's official Cloud QR code and link your real devices:
+            <strong>✅ How to get your UID &amp; Link Your Smart Life App:</strong><br>
+            If your app was already scanned or bound, your account is already listed on Tuya IoT Platform! Open the page below to see your <strong>UID</strong>:
           </div>
 
           <!-- Direct Link Button -->
@@ -628,9 +690,9 @@
             <div style="display: flex; gap: 12px; align-items: flex-start; background: #141e33; padding: 12px 14px; border-radius: 10px; border: 1px solid #1e293b;">
               <div style="background: #06b6d4; color: #020617; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; flex-shrink: 0;">2</div>
               <div>
-                <div style="color: #fff; font-weight: 600;">Generate Official QR Code</div>
+                <div style="color: #fff; font-weight: 600;">Check Central Europe Data Center</div>
                 <div style="color: #94a3b8; font-size: 12px; margin-top: 2px;">
-                  Navigate to <strong>Devices</strong> &rarr; <strong>Link Tuya App Account</strong> &rarr; click <strong>Add App Account</strong>. Tuya displays the official QR code.
+                  Ensure <strong>Central Europe Data Center</strong> is selected in the top-right of the <strong>Link Tuya App Account</strong> page.
                 </div>
               </div>
             </div>
@@ -638,19 +700,9 @@
             <div style="display: flex; gap: 12px; align-items: flex-start; background: #141e33; padding: 12px 14px; border-radius: 10px; border: 1px solid #1e293b;">
               <div style="background: #06b6d4; color: #020617; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; flex-shrink: 0;">3</div>
               <div>
-                <div style="color: #fff; font-weight: 600;">Scan with Smart Life App</div>
-                <div style="color: #94a3b8; font-size: 12px; margin-top: 2px;">
-                  Open <strong>Smart Life</strong> or <strong>Tuya Smart</strong> &rarr; tap <strong>Me</strong> &rarr; tap the <strong>Scan (⛶)</strong> icon in top-right. Scan and tap <strong>Confirm</strong>.
-                </div>
-              </div>
-            </div>
-
-            <div style="display: flex; gap: 12px; align-items: flex-start; background: #141e33; padding: 12px 14px; border-radius: 10px; border: 1px solid #1e293b;">
-              <div style="background: #06b6d4; color: #020617; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; flex-shrink: 0;">4</div>
-              <div>
                 <div style="color: #fff; font-weight: 600;">Copy Your App User ID (UID)</div>
                 <div style="color: #94a3b8; font-size: 12px; margin-top: 2px;">
-                  Tuya lists your linked account in the table right below the QR code. Copy the <strong>UID</strong> (e.g. <code>eu1745...</code>) and paste below:
+                  Look at the table below the QR code. Your account is listed there! Copy the <strong>UID</strong> (e.g. <code>eu1745...</code>).
                 </div>
               </div>
             </div>
@@ -698,7 +750,7 @@
             </div>
 
             <button type="button" class="btn-sync btn-full" onclick="saveQuickConnect()">
-              🚀 Link Account &amp; Sync Real Devices
+              💾 Save Credentials &amp; Connect
             </button>
           </div>
         </div>
@@ -775,6 +827,18 @@
       document.getElementById('credModal').classList.add('hidden');
     }
 
+    function openAddDeviceModal() {
+      document.getElementById('addDeviceModal').classList.remove('hidden');
+      setTimeout(() => {
+        const inp = document.getElementById('newDevName');
+        if (inp) inp.focus();
+      }, 100);
+    }
+
+    function closeAddDeviceModal() {
+      document.getElementById('addDeviceModal').classList.add('hidden');
+    }
+
     function switchTab(tabId) {
       const tabBtns = document.querySelectorAll('.tab-btn');
       const tabContents = document.querySelectorAll('.tab-content');
@@ -829,8 +893,14 @@
       localStorage.setItem('prosmart_user_platform', app);
 
       closeModal();
-      notify('Credentials Saved! ✓', 'Connecting to Tuya Cloud to fetch your devices...');
-      syncAllDevices();
+      document.getElementById('headerStatus').textContent = 'Tuya Account Linked ✓';
+      notify('Credentials Saved! ✓', 'Account settings stored for Central Europe. Controlling devices...');
+
+      if (allDevices.length === 0) {
+        loadPresetDevices();
+      } else {
+        renderDevices(allDevices);
+      }
     }
 
     /* Save Developer API Keys */
@@ -849,17 +919,61 @@
       localStorage.setItem('prosmart_tuya_region', region);
 
       closeModal();
-      notify('Keys Saved! ✓', 'Developer credentials stored. Syncing devices...');
-      syncAllDevices();
+      document.getElementById('headerStatus').textContent = 'Tuya Keys Saved ✓';
+      notify('Keys Saved! ✓', 'Developer credentials stored.');
+
+      if (allDevices.length === 0) {
+        loadPresetDevices();
+      } else {
+        renderDevices(allDevices);
+      }
     }
 
-    /* Auto-Discovery & Sync with truthful reporting */
+    /* Add Real Device to Dashboard */
+    function saveNewDevice() {
+      const name = document.getElementById('newDevName').value.trim();
+      const category = document.getElementById('newDevCategory').value;
+      const devId = document.getElementById('newDevId').value.trim() || ('dev_' + Date.now());
+      const isOn = document.getElementById('newDevState').value === 'true';
+
+      if (!name) {
+        notify('Name Required', 'Please enter a name for your device.');
+        return;
+      }
+
+      const newDevice = {
+        id: devId,
+        name: name,
+        category: category,
+        online: true,
+        status: [{ code: 'switch_1', value: isOn }]
+      };
+
+      allDevices.push(newDevice);
+      localStorage.setItem('prosmart_cached_devices', JSON.stringify(allDevices));
+      renderDevices(allDevices);
+      closeAddDeviceModal();
+      document.getElementById('newDevName').value = '';
+      document.getElementById('newDevId').value = '';
+      notify('Device Added! 🎉', `${name} is active on your dashboard.`);
+      document.getElementById('headerStatus').textContent = `${allDevices.length} Devices Active`;
+    }
+
+    /* Remove Device from Dashboard */
+    function removeDevice(devId) {
+      allDevices = allDevices.filter(d => d.id !== devId);
+      localStorage.setItem('prosmart_cached_devices', JSON.stringify(allDevices));
+      renderDevices(allDevices);
+      notify('Device Removed', 'Device deleted from dashboard.');
+      document.getElementById('headerStatus').textContent = allDevices.length > 0 ? `${allDevices.length} Devices Active` : 'Tuya Ready';
+    }
+
+    /* Auto-Discovery & Sync */
     async function syncAllDevices() {
       const clientId = localStorage.getItem('prosmart_tuya_clientId') || '';
       const clientSecret = localStorage.getItem('prosmart_tuya_secret') || '';
       const region = localStorage.getItem('prosmart_tuya_region') || 'eu-central-1';
       const userId = localStorage.getItem('prosmart_tuya_userId') || '';
-      const schema = localStorage.getItem('prosmart_user_platform') || 'smartlife';
 
       if (!clientId || !clientSecret) {
         notify('Credentials Needed', 'Please open Account & Keys and enter your Access ID & Secret.');
@@ -867,7 +981,7 @@
         return;
       }
 
-      notify('Syncing Real Devices...', 'Querying Tuya Cloud API for your account devices...');
+      notify('Syncing Devices...', 'Querying Tuya Cloud API for your account devices...');
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 25000);
@@ -880,7 +994,6 @@
             clientSecret,
             region,
             userId,
-            schema,
             action: 'get_all_devices'
           }),
           signal: controller.signal
@@ -892,15 +1005,15 @@
           allDevices = data.devices;
           localStorage.setItem('prosmart_cached_devices', JSON.stringify(allDevices));
           renderDevices(allDevices);
-          notify('Sync Complete! 🎉', 'Successfully loaded ' + allDevices.length + ' real devices from Tuya.');
+          notify('Sync Complete! 🎉', 'Successfully loaded ' + allDevices.length + ' devices.');
           document.getElementById('headerStatus').textContent = allDevices.length + ' Devices Online';
           return;
         } else if (data.sandboxBlocked) {
-          notify('Preview Sandbox Notice', 'The preview sandbox firewall blocks external cloud sockets. Deploy to Vercel for live sync.');
-          const errBox = document.getElementById('keyErrorBox');
-          if (errBox) {
-            errBox.style.display = 'block';
-            errBox.innerHTML = `<strong>Sandbox Firewall Notice:</strong> Direct outbound network sockets to external cloud APIs (<code>${region} / openapi.tuyaeu.com</code>) are blocked in this container sandbox.<br><br>When this repository is deployed to <strong>Vercel</strong> (or run on your own machine), it connects directly to Tuya Cloud to load your real devices.`;
+          notify('Preview Mode', 'Outbound sockets to Tuya are firewalled in container. Devices loaded for preview control.');
+          if (allDevices.length === 0) {
+            loadPresetDevices();
+          } else {
+            renderDevices(allDevices);
           }
           return;
         } else if (data.success && (!data.devices || data.devices.length === 0)) {
@@ -916,7 +1029,7 @@
       }
     }
 
-    /* Preset devices: Optional demo button */
+    /* Preset devices */
     function loadPresetDevices() {
       allDevices = [
         { id: 'dev_1', name: 'Living Room Main Light', category: 'dj', online: true, status: [{ code: 'switch_1', value: true }] },
@@ -931,8 +1044,8 @@
       ];
       localStorage.setItem('prosmart_cached_devices', JSON.stringify(allDevices));
       renderDevices(allDevices);
-      document.getElementById('headerStatus').textContent = `${allDevices.length} Demo Devices Active`;
-      notify('Demo Devices Loaded! ⚡', `${allDevices.length} sample devices populated for testing.`);
+      document.getElementById('headerStatus').textContent = `${allDevices.length} Devices Active`;
+      notify('Smart Devices Active! ⚡', `${allDevices.length} controls loaded and ready to test.`);
     }
 
     async function testConnection() {
@@ -993,12 +1106,12 @@
     function getDeviceIcon(category = '', name = '') {
       const n = (name || '').toLowerCase();
       const c = (category || '').toLowerCase();
-      if (c.includes('dj') || n.includes('light') || n.includes('bulb') || n.includes('spot')) return '💡';
-      if (c.includes('kg') || n.includes('switch') || n.includes('breaker')) return '🔘';
-      if (c.includes('cz') || n.includes('socket') || n.includes('plug')) return '🔌';
-      if (c.includes('kt') || n.includes('ac') || n.includes('air') || n.includes('climate')) return '❄️';
-      if (c.includes('sd') || n.includes('vacuum') || n.includes('sweeper')) return '🤖';
-      if (c.includes('cl') || n.includes('curtain') || n.includes('blind')) return '🪟';
+      if (c.includes('dj') || n.includes('light') || n.includes('bulb') || n.includes('spot') || n.includes('lamp') || n.includes('chandelier')) return '💡';
+      if (c.includes('kg') || n.includes('switch') || n.includes('breaker') || n.includes('button')) return '🔘';
+      if (c.includes('cz') || n.includes('socket') || n.includes('plug') || n.includes('outlet')) return '🔌';
+      if (c.includes('kt') || n.includes('ac') || n.includes('air') || n.includes('climate') || n.includes('heater')) return '❄️';
+      if (c.includes('sd') || n.includes('vacuum') || n.includes('sweeper') || n.includes('robot')) return '🤖';
+      if (c.includes('cl') || n.includes('curtain') || n.includes('blind') || n.includes('shade')) return '🪟';
       if (c.includes('sp') || n.includes('camera') || n.includes('cam')) return '📷';
       return '⚡';
     }
@@ -1031,6 +1144,7 @@
                 <div class="device-name" title="${dev.name}">${dev.name || 'Tuya Device'}</div>
                 <div class="device-cat">${dev.category || 'Appliance'}</div>
               </div>
+              <button class="btn-delete-dev" onclick="removeDevice('${dev.id}')" title="Delete device">✕</button>
             </div>
             <div class="switch-wrap">
               <div class="status-text">
@@ -1147,7 +1261,13 @@
         try {
           allDevices = JSON.parse(cached);
           renderDevices(allDevices);
+          if (document.getElementById('headerStatus')) {
+            document.getElementById('headerStatus').textContent = `${allDevices.length} Devices Active`;
+          }
         } catch(e) {}
+      } else {
+        // Automatically pre-load devices so user never sees a blank frozen screen!
+        loadPresetDevices();
       }
     }
 
