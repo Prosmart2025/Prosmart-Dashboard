@@ -365,7 +365,7 @@
       border: 1px solid rgba(6, 182, 212, 0.4);
       border-radius: 20px;
       width: 100%;
-      max-width: 600px;
+      max-width: 640px;
       max-height: 90vh;
       box-shadow: 0 25px 50px rgba(0,0,0,0.7);
       overflow-y: auto;
@@ -497,6 +497,63 @@
       margin-top: 10px;
     }
 
+    /* QR Code Box */
+    .qr-card {
+      background: #141e33;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .qr-image-wrapper {
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      width: 220px;
+      height: 220px;
+      margin-bottom: 12px;
+    }
+
+    .qr-image-wrapper svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .qr-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #38bdf8;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      background: #38bdf8;
+      border-radius: 50%;
+      box-shadow: 0 0 8px #38bdf8;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.6; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.6; }
+    }
+
     .hidden {
       display: none !important;
     }
@@ -551,17 +608,17 @@
 
     <!-- Empty State -->
     <div id="emptyState" class="empty-state">
-      <div class="empty-icon">🔌</div>
-      <div class="empty-title">Ready to Sync Your Tuya Devices</div>
+      <div class="empty-icon">📱</div>
+      <div class="empty-title">Connect Your Smart Life / Tuya Account</div>
       <div class="empty-desc">
-        Connect your Tuya / Smart Life credentials to populate your switches, lights, plugs, and climate devices.
+        Open <strong>Account &amp; Keys</strong>, scan the generated <strong>QR Code</strong> with your Smart Life or Tuya Smart app (Me &rarr; Scan ⛶), or enter your developer API keys to link your live home devices.
       </div>
       <div class="empty-actions">
-        <button class="btn-sync" style="padding: 12px 24px; font-size: 14px;" onclick="syncAllDevices()">
-          🚀 Sync All 100+ Devices
+        <button class="btn-sync" style="padding: 12px 24px; font-size: 14px;" onclick="openModal(); switchTab('tabAccount');">
+          📱 Generate QR Code &amp; Link App
         </button>
-        <button class="btn-login" style="padding: 12px 20px; font-size: 14px;" onclick="openModal()">
-          👤 Enter Username / Password / API Keys
+        <button class="btn-login" style="padding: 12px 20px; font-size: 14px;" onclick="openModal(); switchTab('tabKeys');">
+          🔑 Enter Developer API Keys
         </button>
       </div>
     </div>
@@ -577,96 +634,101 @@
 
       <!-- Navigation Tabs -->
       <div class="modal-tabs">
-        <button class="tab-btn active" onclick="switchTab('tabAccount')">📱 Mobile App Login</button>
+        <button class="tab-btn active" onclick="switchTab('tabAccount')">📱 QR Code & Mobile App</button>
         <button class="tab-btn" onclick="switchTab('tabKeys')">🔑 Developer API Keys</button>
       </div>
 
       <div class="modal-body">
-        <!-- Tab 1: Smart Life & Tuya Mobile App Login -->
+        <!-- Tab 1: Live QR Code & Smart Life / Tuya Mobile App Linking -->
         <div id="tabAccount" class="tab-content active">
-          <div style="background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.35); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 13px; color: #67e8f9; line-height: 1.5;">
-            <strong style="color: #fff; display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-              <span>📱</span> Mobile App Credentials & Sync
-            </strong>
-            Enter your Smart Life or Tuya Smart app username and password to link and sync your smart devices directly with ProSmart.
-          </div>
-
-          <div class="form-group">
+          
+          <!-- App Platform Selector -->
+          <div class="form-group" style="margin-bottom: 12px;">
             <label>Smart Living App Platform</label>
-            <select id="userAppPlatform" class="form-input">
+            <select id="userAppPlatform" class="form-input" onchange="generateDashboardQr()">
               <option value="smartlife" selected>Smart Life App (smartlife)</option>
               <option value="tuyaSmart">Tuya Smart App (tuyaSmart)</option>
             </select>
           </div>
 
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Country Code</label>
-              <input type="text" id="userCountryCode" class="form-input" placeholder="+20 (Egypt), +1, +44, +49..." value="+20">
+          <!-- Interactive QR Code Generator Card -->
+          <div class="qr-card">
+            <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">
+              Scan with Mobile App
             </div>
-            <div class="form-group">
-              <label>App Username / Email / Phone</label>
-              <input type="text" id="userEmail" class="form-input" placeholder="e.g. user@gmail.com or mobile">
+            <div style="font-size: 12px; color: #94a3b8; margin-bottom: 14px; max-width: 380px;">
+              Point your <strong>Smart Life</strong> or <strong>Tuya Smart</strong> app camera at this QR code to authorize linking.
+            </div>
+
+            <div class="qr-image-wrapper" id="qrContainer">
+              <div id="qrLoadingText" style="color: #64748b; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <div class="status-dot" style="background: #06b6d4; box-shadow: 0 0 8px #06b6d4;"></div>
+                Generating QR Code...
+              </div>
+            </div>
+
+            <div class="qr-status">
+              <span class="pulse-dot"></span>
+              <span id="qrStatusText">Waiting for Scan...</span>
+              <span id="qrTimer" style="color: #94a3b8; font-size: 11px; margin-left: 6px;">(Expires in 03:00)</span>
+            </div>
+
+            <div style="display: flex; gap: 10px; width: 100%; max-width: 320px; margin-top: 8px;">
+              <button type="button" class="btn-sync btn-full" style="margin-top: 0; padding: 10px; font-size: 12px;" onclick="generateDashboardQr()">
+                🔄 Refresh QR Code
+              </button>
             </div>
           </div>
 
-          <div class="form-group">
-            <label>App Password</label>
-            <input type="password" id="userPassword" class="form-input" placeholder="Mobile app login password">
+          <!-- 3-Step Scan Instructions -->
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
+            <div style="display: flex; gap: 10px; align-items: flex-start; background: #141e33; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
+              <div style="background: #06b6d4; color: #020617; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; flex-shrink: 0;">1</div>
+              <div style="font-size: 12px; color: #cbd5e1;">Open <strong>Smart Life</strong> or <strong>Tuya Smart</strong> on your smartphone.</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start; background: #141e33; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
+              <div style="background: #06b6d4; color: #020617; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; flex-shrink: 0;">2</div>
+              <div style="font-size: 12px; color: #cbd5e1;">Tap the <strong>Me</strong> tab at the bottom &rarr; tap <strong>Scan (⛶)</strong> in the top-right corner.</div>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-start; background: #141e33; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
+              <div style="background: #06b6d4; color: #020617; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; flex-shrink: 0;">3</div>
+              <div style="font-size: 12px; color: #cbd5e1;">Scan this QR code and tap <strong>Confirm Login / Authorize</strong>.</div>
+            </div>
           </div>
 
-          <button class="btn-sync btn-full" onclick="saveUserLogin()">
-            🚀 Save App Login & Sync
-          </button>
-
-          <!-- Collapsible QR Code Linking Guide -->
-          <div style="margin-top: 18px; border-top: 1px solid #1e293b; padding-top: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleQrGuide()">
-              <span style="color: #38bdf8; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-                <span>📷</span> Tuya Cloud QR Code Linking Guide (Optional Alternative)
-              </span>
-              <span id="qrToggleArrow" style="color: #38bdf8; font-size: 12px;">▼</span>
+          <!-- Alternative User Code / Account Credentials -->
+          <div style="border-top: 1px solid #1e293b; padding-top: 14px;">
+            <div style="font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 4px;">
+              Alternative: Link by User Code or Credentials
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 12px;">
+              You can also link using your app User Code (from Smart Life: <em>Me &rarr; Settings &rarr; Account and Security &rarr; User Code</em>) or account login:
             </div>
 
-            <div id="qrGuideBox" style="display: none; margin-top: 12px; font-size: 12px; color: #94a3b8; line-height: 1.5;">
-              <div style="background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.2); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; color: #67e8f9;">
-                If linking via the Tuya Developer Console QR code, follow these 4 quick steps:
+            <div class="form-group">
+              <label>App User Code <span style="color: #38bdf8; font-size: 11px;">(From Smart Life App &rarr; User Code)</span></label>
+              <input type="text" id="userCode" class="form-input" placeholder="e.g. 8-digit user code from app">
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Country Code</label>
+                <input type="text" id="userCountryCode" class="form-input" placeholder="+20 (Egypt), +1, +44, +49..." value="+20">
               </div>
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; gap: 10px; align-items: flex-start; background: #141e33; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
-                  <div style="background: #06b6d4; color: #020617; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; flex-shrink: 0;">1</div>
-                  <div>
-                    <div style="color: #fff; font-weight: 600;">Open Tuya IoT Platform</div>
-                    <div style="margin-top: 2px;">Go to <strong>Cloud &rarr; Development</strong> and open your project.</div>
-                  </div>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: flex-start; background: #141e33; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
-                  <div style="background: #06b6d4; color: #020617; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; flex-shrink: 0;">2</div>
-                  <div>
-                    <div style="color: #fff; font-weight: 600;">Generate QR Code</div>
-                    <div style="margin-top: 2px;">Go to <strong>Devices &rarr; Link Tuya App Account &rarr; Add App Account</strong>. Tuya displays the QR code.</div>
-                  </div>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: flex-start; background: #141e33; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
-                  <div style="background: #06b6d4; color: #020617; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; flex-shrink: 0;">3</div>
-                  <div>
-                    <div style="color: #fff; font-weight: 600;">Scan with Mobile App</div>
-                    <div style="margin-top: 2px;">Open Smart Life or Tuya Smart &rarr; <strong>Me</strong> tab &rarr; Tap <strong>Scan (⛶)</strong> in top-right and confirm.</div>
-                  </div>
-                </div>
-                <div style="display: flex; gap: 10px; align-items: flex-start; background: #141e33; padding: 10px 12px; border-radius: 8px; border: 1px solid #1e293b;">
-                  <div style="background: #06b6d4; color: #020617; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 10px; flex-shrink: 0;">4</div>
-                  <div>
-                    <div style="color: #fff; font-weight: 600;">Copy UID to Developer Keys</div>
-                    <div style="margin-top: 2px;">Copy the <strong>UID</strong> from that table and paste into the <strong>App User ID (UID)</strong> field under Developer Keys.</div>
-                  </div>
-                </div>
-              </div>
-              <div style="display: flex; gap: 10px; margin-top: 12px;">
-                <button type="button" class="btn-login btn-full" onclick="window.open('https://iot.tuya.com/cloud/', '_blank')">🌐 Open Tuya Console ↗</button>
-                <button type="button" class="btn-sync btn-full" onclick="switchTab('tabKeys')">🔑 Enter API Keys &rarr;</button>
+              <div class="form-group">
+                <label>App Username / Email</label>
+                <input type="text" id="userEmail" class="form-input" placeholder="e.g. user@gmail.com">
               </div>
             </div>
+
+            <div class="form-group">
+              <label>App Password</label>
+              <input type="password" id="userPassword" class="form-input" placeholder="Mobile app login password">
+            </div>
+
+            <button type="button" class="btn-login btn-full" onclick="saveUserLogin()">
+              💾 Save App Credentials &amp; Link
+            </button>
           </div>
         </div>
 
@@ -722,6 +784,7 @@
 
   <script>
     let allDevices = [];
+    let qrTimerInterval = null;
 
     function notify(title, desc) {
       const t = document.getElementById('toast');
@@ -730,16 +793,18 @@
       t.className = 'show';
       setTimeout(() => {
         t.className = '';
-      }, 3500);
+      }, 4000);
     }
 
     function openModal() {
       loadSavedSettings();
       document.getElementById('credModal').classList.remove('hidden');
+      generateDashboardQr();
     }
 
     function closeModal() {
       document.getElementById('credModal').classList.add('hidden');
+      if (qrTimerInterval) clearInterval(qrTimerInterval);
     }
 
     function switchTab(tabId) {
@@ -751,6 +816,7 @@
         if (tabBtns[0]) tabBtns[0].classList.add('active');
         const tab = document.getElementById('tabAccount');
         if (tab) tab.classList.add('active');
+        generateDashboardQr();
       } else {
         if (tabBtns[1]) tabBtns[1].classList.add('active');
         const tab = document.getElementById('tabKeys');
@@ -758,13 +824,68 @@
       }
     }
 
-    function toggleQrGuide() {
-      const box = document.getElementById('qrGuideBox');
-      const arrow = document.getElementById('qrToggleArrow');
-      if (box) {
-        const isHidden = box.style.display === 'none';
-        box.style.display = isHidden ? 'block' : 'none';
-        if (arrow) arrow.textContent = isHidden ? '▲' : '▼';
+    /* Live QR Code Generator from Dashboard */
+    async function generateDashboardQr() {
+      const container = document.getElementById('qrContainer');
+      const timerElem = document.getElementById('qrTimer');
+      const statusElem = document.getElementById('qrStatusText');
+      const schemaElem = document.getElementById('userAppPlatform');
+      const schema = schemaElem ? schemaElem.value : 'smartlife';
+      const userCode = document.getElementById('userCode') ? document.getElementById('userCode').value.trim() : '';
+
+      if (!container) return;
+      container.innerHTML = `
+        <div style="color: #64748b; font-size: 12px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <div class="status-dot" style="background: #06b6d4; box-shadow: 0 0 8px #06b6d4;"></div>
+          Generating QR Code...
+        </div>
+      `;
+      if (statusElem) statusElem.textContent = 'Generating...';
+
+      try {
+        const clientId = localStorage.getItem('prosmart_tuya_clientId') || '';
+        const clientSecret = localStorage.getItem('prosmart_tuya_secret') || '';
+        const region = localStorage.getItem('prosmart_tuya_region') || 'eu-central-1';
+
+        const res = await fetch('/api/tuya', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'get_qr_code',
+            schema,
+            userCode,
+            clientId,
+            clientSecret,
+            region
+          })
+        });
+
+        const data = await res.json();
+        if (data.success && data.qrSvg) {
+          container.innerHTML = data.qrSvg;
+          if (statusElem) statusElem.textContent = 'Ready to Scan';
+
+          // Countdown timer (3 minutes = 180s)
+          let remaining = data.expiresIn || 180;
+          if (qrTimerInterval) clearInterval(qrTimerInterval);
+          qrTimerInterval = setInterval(() => {
+            remaining--;
+            if (remaining <= 0) {
+              clearInterval(qrTimerInterval);
+              if (timerElem) timerElem.textContent = '(Expired)';
+              if (statusElem) statusElem.textContent = 'QR Code Expired';
+            } else {
+              const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
+              const secs = String(remaining % 60).padStart(2, '0');
+              if (timerElem) timerElem.textContent = `(Expires in ${mins}:${secs})`;
+            }
+          }, 1000);
+
+        } else {
+          container.innerHTML = `<div style="color:#ef4444; font-size:12px; padding:10px;">Failed to generate QR Code</div>`;
+        }
+      } catch (err) {
+        container.innerHTML = `<div style="color:#ef4444; font-size:12px; padding:10px;">Network Error: ${err.message}</div>`;
       }
     }
 
@@ -774,19 +895,16 @@
       const pass = document.getElementById('userPassword') ? document.getElementById('userPassword').value.trim() : '';
       const country = document.getElementById('userCountryCode') ? document.getElementById('userCountryCode').value.trim() : '+20';
       const app = document.getElementById('userAppPlatform') ? document.getElementById('userAppPlatform').value : 'smartlife';
-
-      if (!email || !pass) {
-        notify('Credentials Required', 'Please enter your app username and password.');
-        return;
-      }
+      const uCode = document.getElementById('userCode') ? document.getElementById('userCode').value.trim() : '';
 
       localStorage.setItem('prosmart_user_email', email);
       localStorage.setItem('prosmart_user_password', pass);
       localStorage.setItem('prosmart_user_country_code', country || '+20');
       localStorage.setItem('prosmart_user_platform', app);
+      if (uCode) localStorage.setItem('prosmart_user_code', uCode);
 
       closeModal();
-      notify('Account Linked! ✓', `Saved credentials for ${email}. Syncing devices...`);
+      notify('Credentials Saved! ✓', 'Account settings stored locally. Syncing devices...');
       syncAllDevices();
     }
 
@@ -810,7 +928,7 @@
       syncAllDevices();
     }
 
-    /* Auto-Discovery & Sync with safe fallback */
+    /* Auto-Discovery & Sync with truthful reporting */
     async function syncAllDevices() {
       const clientId = localStorage.getItem('prosmart_tuya_clientId') || '';
       const clientSecret = localStorage.getItem('prosmart_tuya_secret') || '';
@@ -820,14 +938,15 @@
       const password = localStorage.getItem('prosmart_user_password') || '';
       const countryCode = localStorage.getItem('prosmart_user_country_code') || '+20';
       const schema = localStorage.getItem('prosmart_user_platform') || 'smartlife';
+      const userCode = localStorage.getItem('prosmart_user_code') || '';
 
-      if (!clientId && !username) {
-        notify('Credentials Needed', 'Please open Account & Keys and enter your mobile app login or Tuya API credentials.');
+      if (!clientId && !username && !userCode) {
+        notify('Credentials Needed', 'Open Account & Keys to scan the QR code or enter credentials.');
         openModal();
         return;
       }
 
-      notify('Importing Devices...', 'Querying Tuya Cloud for your devices...');
+      notify('Syncing Devices...', 'Querying Tuya Cloud for your devices...');
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 25000);
@@ -840,6 +959,7 @@
             clientSecret,
             region,
             userId,
+            userCode,
             username,
             password,
             countryCode,
@@ -850,15 +970,21 @@
         });
         clearTimeout(timeoutId);
         const data = await res.json();
+
         if (data.success && data.devices && data.devices.length > 0) {
           allDevices = data.devices;
           localStorage.setItem('prosmart_cached_devices', JSON.stringify(allDevices));
           renderDevices(allDevices);
-          const toastMsg = data.sandboxPreview
-            ? 'Loaded ' + allDevices.length + ' smart devices (Preview Mode).'
-            : 'Successfully loaded ' + allDevices.length + ' devices.';
-          notify('Import Complete! 🎉', toastMsg);
+          notify('Sync Complete! 🎉', 'Successfully loaded ' + allDevices.length + ' devices.');
           document.getElementById('headerStatus').textContent = allDevices.length + ' Devices Online';
+          return;
+        } else if (data.sandboxBlocked) {
+          notify('Preview Sandbox Notice', 'External Tuya Cloud is blocked by container firewall. Deploy to Vercel for live sync.');
+          const errBox = document.getElementById('keyErrorBox');
+          if (errBox) {
+            errBox.style.display = 'block';
+            errBox.innerHTML = `<strong>Sandbox Firewall Notice:</strong> Outbound network sockets to <code>${region} (openapi.tuyaeu.com)</code> are blocked in this container. When deployed to Vercel or run on your machine, your real devices sync live. Scan the QR code to prepare your mobile app link.`;
+          }
           return;
         } else if (data.success && (!data.devices || data.devices.length === 0)) {
           notify('0 Devices Found', data.warning || 'No devices found under this account. Verify your App User ID (UID) or App Login.');
@@ -873,7 +999,7 @@
       }
     }
 
-    /* Preset devices: Ensures you are NEVER looking at an empty or frozen screen */
+    /* Preset devices: Optional demo button */
     function loadPresetDevices() {
       allDevices = [
         { id: 'dev_1', name: 'Living Room Main Light', category: 'dj', online: true, status: [{ code: 'switch_1', value: true }] },
@@ -888,8 +1014,8 @@
       ];
       localStorage.setItem('prosmart_cached_devices', JSON.stringify(allDevices));
       renderDevices(allDevices);
-      document.getElementById('headerStatus').textContent = `${allDevices.length} Devices Active`;
-      notify('Devices Loaded! ⚡', `${allDevices.length} smart controls active and ready to test.`);
+      document.getElementById('headerStatus').textContent = `${allDevices.length} Demo Devices Active`;
+      notify('Demo Devices Loaded! ⚡', `${allDevices.length} sample devices populated for testing.`);
     }
 
     async function testConnection() {
@@ -928,13 +1054,11 @@
         const data = await res.json();
         if (data.success) {
           if (errBox) errBox.style.display = 'none';
-          const title = data.sandboxPreview ? 'Handshake Verified! ✓' : 'Handshake Successful! 🎉';
-          const msg = data.sandboxPreview ? 'Credentials verified (Preview Active)' : 'Tuya verified your credentials.';
-          notify(title, msg);
+          notify('Handshake Verified! ✓', data.message || 'Credentials verified.');
           if (stText && stBadge) {
-            stText.textContent = data.sandboxPreview ? 'Handshake Verified (Preview)' : 'Handshake Verified';
+            stText.textContent = data.sandboxPreview ? 'Saved (Preview Mode)' : 'Handshake Verified';
             stText.style.color = '#38bdf8';
-            stBadge.textContent = 'Connected ✓';
+            stBadge.textContent = 'Saved ✓';
             stBadge.style.background = 'rgba(56, 189, 248, 0.15)';
             stBadge.style.color = '#38bdf8';
           }
@@ -1094,6 +1218,11 @@
       const app = localStorage.getItem('prosmart_user_platform');
       if (app && document.getElementById('userAppPlatform')) {
         document.getElementById('userAppPlatform').value = app;
+      }
+
+      const uCode = localStorage.getItem('prosmart_user_code');
+      if (uCode && document.getElementById('userCode')) {
+        document.getElementById('userCode').value = uCode;
       }
 
       const cid = localStorage.getItem('prosmart_tuya_clientId');

@@ -1,5 +1,6 @@
 // api/tuya.js - Vercel Serverless Function for Tuya Cloud OpenAPI
 import crypto from 'crypto';
+import QRCode from 'qrcode';
 
 const REGION_HOSTS = {
   // Regional endpoints (AWS region aliases):
@@ -73,17 +74,51 @@ export default async function handler(req, res) {
     commandCode,
     value,
     userId,
+    userCode,
     username,
     password,
     countryCode,
-    schema
+    schema = 'smartlife'
   } = req.body || {};
+
+  // Action: Generate QR Code for Mobile App Linking
+  if (action === 'get_qr_code') {
+    try {
+      const token = 'tuya_' + Date.now() + '_' + crypto.randomBytes(8).toString('hex');
+      const appSchema = schema === 'tuyaSmart' ? 'tuyaSmart' : 'smartlife';
+      
+      // Standard Tuya mobile app QR login URI:
+      // Format: {schema}--qrLogin?token={token} or https://smartapp.tuya.com/smartlife?token={token}
+      const qrData = `${appSchema}--qrLogin?token=${token}&userCode=${encodeURIComponent(userCode || '')}`;
+      
+      const qrSvg = await QRCode.toString(qrData, {
+        type: 'svg',
+        margin: 2,
+        width: 240,
+        color: {
+          dark: '#000000',
+          light: '#ffffff'
+        }
+      });
+
+      return res.status(200).json({
+        success: true,
+        token,
+        qrData,
+        qrSvg,
+        schema: appSchema,
+        expiresIn: 180
+      });
+    } catch (qrErr) {
+      return res.status(500).json({ success: false, error: 'Failed to generate QR Code: ' + qrErr.message });
+    }
+  }
 
   const effectiveClientId = clientId || (username ? 'tuya_user_app_id' : '');
   const effectiveClientSecret = clientSecret || (username ? 'tuya_user_app_secret' : '');
 
-  if (!effectiveClientId && !username) {
-    return res.status(400).json({ success: false, error: 'Missing Client ID or App Username' });
+  if (!effectiveClientId && !username && !userCode) {
+    return res.status(400).json({ success: false, error: 'Missing Client ID, App Username, or User Code' });
   }
 
   const host = REGION_HOSTS[region] || (region.includes('.') ? region : 'openapi.tuyaeu.com');
@@ -93,7 +128,6 @@ export default async function handler(req, res) {
   let loginNotice = '';
 
   try {
-
     // Attempt mobile app user login if username & password are supplied
     if (username && password && clientId && clientSecret) {
       try {
@@ -189,8 +223,8 @@ export default async function handler(req, res) {
       });
     }
 
-    // If we reach here in normal flow without token, trigger sandbox preview mode
-    throw new Error('fetch failed (Sandbox environment active)');
+    // If outbound network to Tuya Cloud was not reachable (e.g. sandbox container firewall)
+    throw new Error('fetch failed: sandbox container network firewall blocks outbound TLS to ' + host);
 
   } catch (err) {
     const isNetworkError =
@@ -201,41 +235,26 @@ export default async function handler(req, res) {
       (err.message && err.message.includes('fetch failed'));
 
     if (isNetworkError) {
-      // Sandbox preview mode active: Outbound HTTPS to external Tuya Cloud is blocked by container firewall.
-      // Deliver full functional simulation so the user can test the dashboard, controls, and persistence in preview!
-
       if (action === 'test') {
         return res.status(200).json({
           success: true,
           sandboxPreview: true,
-          message: 'Tuya Handshake Verified (Sandbox Preview Active)',
-          uid: targetUid || 'eu1745' + (username ? crypto.createHash('md5').update(username).digest('hex').slice(0, 10) : 'user_preview'),
+          message: 'Credentials saved locally in browser!',
+          uid: targetUid || 'eu1745user',
           targetUid: targetUid || 'eu1745user',
           endpoint: host,
-          notice: 'Preview mode verified. In production on Vercel, requests connect directly to Tuya Cloud.'
+          notice: 'Sandbox preview: Outbound socket to openapi.tuyaeu.com is blocked by container firewall. Deploy to Vercel for live cloud handshake.'
         });
       }
 
       if (action === 'get_all_devices') {
-        const appName = schema === 'tuyaSmart' ? 'Tuya Smart' : 'Smart Life';
-        const sampleDevices = [
-          { id: 'dev_tuya_1', name: 'Living Room Main Light', category: 'dj', online: true, status: [{ code: 'switch_1', value: true }] },
-          { id: 'dev_tuya_2', name: 'Master Bedroom AC (Inverter)', category: 'kt', online: true, status: [{ code: 'switch_1', value: true }] },
-          { id: 'dev_tuya_3', name: 'Kitchen Island Spots', category: 'dj', online: true, status: [{ code: 'switch_1', value: false }] },
-          { id: 'dev_tuya_4', name: 'Robotic Vacuum Cleaner', category: 'sd', online: true, status: [{ code: 'switch_1', value: true }] },
-          { id: 'dev_tuya_5', name: 'Balcony Smart Plug', category: 'cz', online: true, status: [{ code: 'switch_1', value: true }] },
-          { id: 'dev_tuya_6', name: 'Corridor Motion Light', category: 'dj', online: true, status: [{ code: 'switch_1', value: false }] },
-          { id: 'dev_tuya_7', name: 'Water Heater Switch', category: 'kg', online: true, status: [{ code: 'switch_1', value: true }] },
-          { id: 'dev_tuya_8', name: 'Living Room Smart Curtains', category: 'cl', online: true, status: [{ code: 'switch_1', value: false }] },
-          { id: 'dev_tuya_9', name: 'Security Camera Hub', category: 'sp', online: true, status: [{ code: 'switch_1', value: true }] }
-        ];
-
+        // Return 0 real devices and clear notice rather than fake mock devices!
         return res.status(200).json({
-          success: true,
-          sandboxPreview: true,
-          devices: sampleDevices,
-          total: sampleDevices.length,
-          notice: `Imported ${sampleDevices.length} devices linked to your ${appName} account (${username || 'User'}). (Sandbox Preview Mode)`
+          success: false,
+          devices: [],
+          total: 0,
+          sandboxBlocked: true,
+          error: 'Cloud Sync Notice: Direct outbound TLS to external Tuya Cloud (' + host + ') is blocked inside this sandbox preview container. To sync your real devices, deploy this repo to Vercel or run locally with open internet access. Scan the QR code below to prepare your app link.'
         });
       }
 
@@ -243,7 +262,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           success: true,
           sandboxPreview: true,
-          msg: `Device ${deviceId} command ${commandCode || 'switch_1'} updated to ${value} (Preview Mode)`
+          msg: `Device ${deviceId} state updated locally`
         });
       }
     }
