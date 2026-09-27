@@ -2,11 +2,23 @@
 import crypto from 'crypto';
 
 const REGION_HOSTS = {
-  'eu-central-1': 'openapi.tuyaeu.com',
-  'us-east-1': 'openapi.tuyaus.com',
-  'us-west-2': 'openapi-weaz.tuyaus.com',
-  'cn-north-1': 'openapi.tuyacn.com',
-  'in-south-1': 'openapi.tuyain.com'
+  // Regional endpoints (AWS region aliases):
+  'eu-central-1': 'openapi.tuyaeu.com',     // Central Europe
+  'central-europe': 'openapi.tuyaeu.com',
+  'Central Europe Data Center': 'openapi.tuyaeu.com',
+  'eu-west-1': 'openapi-weaz.tuyaeu.com',    // Western Europe
+  'us-east-1': 'openapi-ueaz.tuyaus.com',    // Eastern America
+  'us-west-2': 'openapi.tuyaus.com',         // Western America
+  'us-west-1': 'openapi.tuyaus.com',         // Western America alias
+  'cn-north-1': 'openapi.tuyacn.com',        // China
+  'in-south-1': 'openapi.tuyain.com',        // India
+  // Standard Tuya codes:
+  'eu': 'openapi.tuyaeu.com',
+  'eu-w': 'openapi-weaz.tuyaeu.com',
+  'us': 'openapi.tuyaus.com',
+  'us-e': 'openapi-ueaz.tuyaus.com',
+  'cn': 'openapi.tuyacn.com',
+  'in': 'openapi.tuyain.com'
 };
 
 function calcSign(clientId, secret, timestamp, nonce, method, path, body = '', accessToken = '') {
@@ -58,7 +70,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ success: false, error: 'Missing Client ID or Secret' });
   }
 
-  const host = REGION_HOSTS[region] || 'openapi.tuyaeu.com';
+  const host = REGION_HOSTS[region] || (region.includes('.') ? region : 'openapi.tuyaeu.com');
 
   try {
     // 1. Get Token from Tuya
@@ -66,7 +78,8 @@ export default async function handler(req, res) {
     if (!tokenRes.success) {
       return res.status(200).json({ 
         success: false, 
-        error: `Tuya Auth Failed: ${tokenRes.msg || 'Check Client ID & Secret in Tuya Console'}` 
+        error: `Tuya Auth Failed [Code ${tokenRes.code || 'UNKNOWN'}]: ${tokenRes.msg || 'Check Client ID, Secret, and selected Region'}`,
+        details: tokenRes
       });
     }
 
@@ -75,21 +88,32 @@ export default async function handler(req, res) {
 
     // Action A: Test Handshake
     if (action === 'test') {
-      return res.status(200).json({ success: true, message: 'Tuya Cloud Handshake Successful!', uid });
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Tuya Cloud Handshake Successful!', 
+        uid,
+        endpoint: host
+      });
     }
 
-    // Action B: Auto-Import ALL Devices (100+ devices in one click)
+    // Action B: Auto-Import ALL Devices
     if (action === 'get_all_devices') {
-      // First try fetching devices linked to the developer UID or Cloud Project
       let devRes = await tuyaRequest(host, clientId, clientSecret, 'GET', `/v1.0/users/${uid}/devices`, null, token);
       
-      // If user endpoint is empty, query cloud project device list
-      if (!devRes.success || !devRes.result || devRes.result.length === 0) {
-        devRes = await tuyaRequest(host, clientId, clientSecret, 'GET', `/v1.0/devices`, null, token);
+      let devices = [];
+      if (devRes.success && devRes.result) {
+        devices = Array.isArray(devRes.result) ? devRes.result : (devRes.result.devices || devRes.result.list || []);
       }
 
-      const devices = (devRes.result && (devRes.result.devices || devRes.result)) || [];
-      return res.status(200).json({ success: true, devices });
+      if (!devRes.success) {
+        return res.status(200).json({
+          success: false,
+          error: `Tuya Device Fetch Error [Code ${devRes.code || 'UNKNOWN'}]: ${devRes.msg || 'Unable to fetch devices for UID ' + uid}. Ensure your Smart Life / Tuya mobile app account is linked in your Tuya Cloud Project under "Link Tuya App Account".`,
+          details: devRes
+        });
+      }
+
+      return res.status(200).json({ success: true, devices, total: devices.length });
     }
 
     // Action C: Send Control Command (Toggle, dim, temp)
@@ -100,11 +124,20 @@ export default async function handler(req, res) {
         ]
       };
       const cmdRes = await tuyaRequest(host, clientId, clientSecret, 'POST', `/v1.0/devices/${deviceId}/commands`, payload, token);
-      return res.status(200).json({ success: cmdRes.success, msg: cmdRes.msg });
+      return res.status(200).json({ 
+        success: cmdRes.success, 
+        msg: cmdRes.msg,
+        code: cmdRes.code,
+        details: cmdRes 
+      });
     }
 
     return res.status(400).json({ success: false, error: 'Unknown action' });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    return res.status(500).json({ 
+      success: false, 
+      error: `Connection Error: ${err.message}. If running in a restricted sandbox, external outbound HTTPS to Tuya Cloud may be blocked; deploy to Vercel for live production sync.`
+    });
   }
 }
+
