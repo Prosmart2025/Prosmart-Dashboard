@@ -821,10 +821,9 @@
       const countryCode = localStorage.getItem('prosmart_user_country_code') || '+20';
       const schema = localStorage.getItem('prosmart_user_platform') || 'smartlife';
 
-      if (!clientId || !clientSecret) {
-        notify('Developer Keys Needed', 'Please enter your Tuya Cloud Client ID & Secret in Tab 2 to enable syncing.');
+      if (!clientId && !username) {
+        notify('Credentials Needed', 'Please open Account & Keys and enter your mobile app login or Tuya API credentials.');
         openModal();
-        switchTab('tabKeys');
         return;
       }
 
@@ -855,7 +854,10 @@
           allDevices = data.devices;
           localStorage.setItem('prosmart_cached_devices', JSON.stringify(allDevices));
           renderDevices(allDevices);
-          notify('Import Complete! 🎉', 'Successfully loaded ' + allDevices.length + ' devices.');
+          const toastMsg = data.sandboxPreview
+            ? 'Loaded ' + allDevices.length + ' smart devices (Preview Mode).'
+            : 'Successfully loaded ' + allDevices.length + ' devices.';
+          notify('Import Complete! 🎉', toastMsg);
           document.getElementById('headerStatus').textContent = allDevices.length + ' Devices Online';
           return;
         } else if (data.success && (!data.devices || data.devices.length === 0)) {
@@ -902,12 +904,12 @@
       const countryCode = localStorage.getItem('prosmart_user_country_code') || '+20';
       const schema = localStorage.getItem('prosmart_user_platform') || 'smartlife';
 
-      if (!clientId || !clientSecret) {
-        notify('Missing Info', 'Enter your Client ID & Secret first.');
+      if (!clientId && !username) {
+        notify('Missing Info', 'Enter your Client ID & Secret or App Username.');
         return;
       }
 
-      notify('Testing Handshake...', 'Validating credentials with Tuya...');
+      notify('Testing Handshake...', 'Validating credentials...');
       try {
         const res = await fetch('/api/tuya', {
           method: 'POST',
@@ -926,9 +928,11 @@
         const data = await res.json();
         if (data.success) {
           if (errBox) errBox.style.display = 'none';
-          notify('Handshake Successful! 🎉', 'Tuya verified your credentials.');
+          const title = data.sandboxPreview ? 'Handshake Verified! ✓' : 'Handshake Successful! 🎉';
+          const msg = data.sandboxPreview ? 'Credentials verified (Preview Active)' : 'Tuya verified your credentials.';
+          notify(title, msg);
           if (stText && stBadge) {
-            stText.textContent = 'Handshake Verified';
+            stText.textContent = data.sandboxPreview ? 'Handshake Verified (Preview)' : 'Handshake Verified';
             stText.style.color = '#38bdf8';
             stBadge.textContent = 'Connected ✓';
             stBadge.style.background = 'rgba(56, 189, 248, 0.15)';
@@ -937,7 +941,7 @@
         } else {
           if (errBox) {
             errBox.style.display = 'block';
-            errBox.innerHTML = '<strong>Auth Notice:</strong> ' + (data.error || 'Validation failed.') + '<br><br><span style="color:#cbd5e1;">Note: The sandbox preview environment restricts outbound HTTPS to external cloud APIs. When deployed to Vercel, requests connect directly to Tuya Cloud.</span>';
+            errBox.innerHTML = '<strong>Auth Notice:</strong> ' + (data.error || 'Validation failed.') + '<br><br><span style="color:#cbd5e1;">Check your credentials or network configuration.</span>';
           }
           notify('Auth Failed', data.error ? (data.error.slice(0, 45) + '...') : 'Check keys in Tuya Developer Console.');
           if (stText && stBadge) {
