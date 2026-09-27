@@ -64,7 +64,20 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { clientId, clientSecret, region = 'eu-central-1', action, deviceId, commandCode, value, userId } = req.body || {};
+  const {
+    clientId,
+    clientSecret,
+    region = 'eu-central-1',
+    action,
+    deviceId,
+    commandCode,
+    value,
+    userId,
+    username,
+    password,
+    countryCode,
+    schema
+  } = req.body || {};
 
   if (!clientId || !clientSecret) {
     return res.status(400).json({ success: false, error: 'Missing Client ID or Secret' });
@@ -73,28 +86,61 @@ export default async function handler(req, res) {
   const host = REGION_HOSTS[region] || (region.includes('.') ? region : 'openapi.tuyaeu.com');
 
   try {
-    // 1. Get Token from Tuya
-    const tokenRes = await tuyaRequest(host, clientId, clientSecret, 'GET', '/v1.0/token?grant_type=1');
-    if (!tokenRes.success) {
-      return res.status(200).json({ 
-        success: false, 
-        error: `Tuya Auth Failed [Code ${tokenRes.code || 'UNKNOWN'}]: ${tokenRes.msg || 'Check Client ID, Secret, and selected Region'}`,
-        details: tokenRes
-      });
+    let token = '';
+    let targetUid = userId || '';
+    let loginNotice = '';
+
+    // Attempt mobile app user login if username & password are supplied
+    if (username && password) {
+      try {
+        const userPassHash = crypto.createHash('md5').update(password).digest('hex');
+        const cleanCountry = countryCode ? String(countryCode).replace(/[^\d]/g, '') : '20';
+        const loginPayload = {
+          country_code: parseInt(cleanCountry, 10) || 20,
+          username: username,
+          password: userPassHash,
+          schema: schema || 'smartlife'
+        };
+        const loginRes = await tuyaRequest(host, clientId, clientSecret, 'POST', '/v1.0/iot-01/associated-users/actions/authorized-login', loginPayload, '');
+        if (loginRes && loginRes.success && loginRes.result && loginRes.result.access_token) {
+          token = loginRes.result.access_token;
+          if (loginRes.result.uid) {
+            targetUid = loginRes.result.uid;
+          }
+        } else if (loginRes && !loginRes.success) {
+          loginNotice = `App login response [Code ${loginRes.code}]: ${loginRes.msg || 'Check app username and password'}`;
+        }
+      } catch (loginErr) {
+        // Fall back to developer token authorization
+      }
     }
 
-    const token = tokenRes.result.access_token;
-    const devUid = tokenRes.result.uid;
-    const targetUid = userId || devUid;
+    // If no app login token obtained, get standard developer access token
+    if (!token) {
+      const tokenRes = await tuyaRequest(host, clientId, clientSecret, 'GET', '/v1.0/token?grant_type=1');
+      if (!tokenRes.success) {
+        return res.status(200).json({ 
+          success: false, 
+          error: `Tuya Auth Failed [Code ${tokenRes.code || 'UNKNOWN'}]: ${tokenRes.msg || 'Check Client ID, Secret, and selected Region'}`,
+          loginNotice: loginNotice || undefined,
+          details: tokenRes
+        });
+      }
+      token = tokenRes.result.access_token;
+      if (!targetUid) {
+        targetUid = tokenRes.result.uid;
+      }
+    }
 
     // Action A: Test Handshake
     if (action === 'test') {
       return res.status(200).json({ 
         success: true, 
         message: 'Tuya Cloud Handshake Successful!', 
-        uid: devUid,
+        uid: targetUid,
         targetUid,
-        endpoint: host
+        endpoint: host,
+        loginNotice: loginNotice || undefined
       });
     }
 
@@ -111,6 +157,7 @@ export default async function handler(req, res) {
         return res.status(200).json({
           success: false,
           error: `Tuya Device Fetch Error [Code ${devRes.code || 'UNKNOWN'}]: ${devRes.msg || 'Unable to fetch devices for UID ' + targetUid}. Ensure your Smart Life / Tuya mobile app account is linked in your Tuya Cloud Project under "Link Tuya App Account".`,
+          loginNotice: loginNotice || undefined,
           details: devRes
         });
       }
@@ -120,7 +167,7 @@ export default async function handler(req, res) {
           success: true,
           devices: [],
           total: 0,
-          warning: `Tuya returned 0 devices for developer UID (${devUid}). Enter your App User ID (UID) from Tuya Console -> "Link Tuya App Account" table to load your mobile app devices.`
+          warning: `Tuya returned 0 devices for developer UID (${targetUid}). Enter your App User ID (UID) from Tuya Console -> "Link Tuya App Account" table or verify your app login credentials.`
         });
       }
 
@@ -151,4 +198,3 @@ export default async function handler(req, res) {
     });
   }
 }
-
