@@ -64,7 +64,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  const { clientId, clientSecret, region = 'eu-central-1', action, deviceId, commandCode, value } = req.body || {};
+  const { clientId, clientSecret, region = 'eu-central-1', action, deviceId, commandCode, value, userId } = req.body || {};
 
   if (!clientId || !clientSecret) {
     return res.status(400).json({ success: false, error: 'Missing Client ID or Secret' });
@@ -84,21 +84,23 @@ export default async function handler(req, res) {
     }
 
     const token = tokenRes.result.access_token;
-    const uid = tokenRes.result.uid;
+    const devUid = tokenRes.result.uid;
+    const targetUid = userId || devUid;
 
     // Action A: Test Handshake
     if (action === 'test') {
       return res.status(200).json({ 
         success: true, 
         message: 'Tuya Cloud Handshake Successful!', 
-        uid,
+        uid: devUid,
+        targetUid,
         endpoint: host
       });
     }
 
     // Action B: Auto-Import ALL Devices
     if (action === 'get_all_devices') {
-      let devRes = await tuyaRequest(host, clientId, clientSecret, 'GET', `/v1.0/users/${uid}/devices`, null, token);
+      let devRes = await tuyaRequest(host, clientId, clientSecret, 'GET', `/v1.0/users/${targetUid}/devices`, null, token);
       
       let devices = [];
       if (devRes.success && devRes.result) {
@@ -108,8 +110,17 @@ export default async function handler(req, res) {
       if (!devRes.success) {
         return res.status(200).json({
           success: false,
-          error: `Tuya Device Fetch Error [Code ${devRes.code || 'UNKNOWN'}]: ${devRes.msg || 'Unable to fetch devices for UID ' + uid}. Ensure your Smart Life / Tuya mobile app account is linked in your Tuya Cloud Project under "Link Tuya App Account".`,
+          error: `Tuya Device Fetch Error [Code ${devRes.code || 'UNKNOWN'}]: ${devRes.msg || 'Unable to fetch devices for UID ' + targetUid}. Ensure your Smart Life / Tuya mobile app account is linked in your Tuya Cloud Project under "Link Tuya App Account".`,
           details: devRes
+        });
+      }
+
+      if (devices.length === 0 && !userId) {
+        return res.status(200).json({
+          success: true,
+          devices: [],
+          total: 0,
+          warning: `Tuya returned 0 devices for developer UID (${devUid}). Enter your App User ID (UID) from Tuya Console -> "Link Tuya App Account" table to load your mobile app devices.`
         });
       }
 
